@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.example</groupId>
+	<artifactId>maven-external-version-number</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+
+	<properties>
+		<!--
+		 | Concourse CI provides a file called version/number in which the contents 
+		 | are a version number (ex: "1.0.0-rc.2").  We want to use this version 
+		 | number for CI builds, but the problem is it isn't in the Maven friendly 
+		 | properties file format. Our ugly hack is to use the gmaven-plugin to read
+		 | the version/number file if present, and then write a new version.properties 
+		 | file for the properties-maven-plugin to read (ex: "versionNumber=1.0.0-rc.2")
+		 |-->
+		<versionSourceFile>version/number</versionSourceFile>
+		<versionTargetFile>${project.build.directory}/version.properties</versionTargetFile>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<build>
+		<!-- versionNumber property set in generated target/version.properties -->
+		<finalName>${project.artifactId}-${versionNumber}</finalName>
+		<plugins>
+ 			<plugin>
+				<groupId>org.codehaus.gmaven</groupId>
+				<artifactId>gmaven-plugin</artifactId>
+				<version>1.5</version>
+				<executions>
+					<execution>
+						<phase>initialize</phase>
+						<goals>
+							<goal>execute</goal>
+						</goals>
+						<configuration>
+							<source>
+								def sourceFile = new File(project.properties.versionSourceFile)
+								def targetFile = new File("${project.properties.versionTargetFile}")
+
+								// get version from file or fallback to maven project version
+								def versionNumber = sourceFile.exists() ? sourceFile.text.trim() : project.version
+
+								targetFile.getParentFile().mkdirs()
+								targetFile.write("versionNumber=" + versionNumber)
+							</source>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+  			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>properties-maven-plugin</artifactId>
+				<version>1.0.0</version>
+				<executions>
+					<execution>
+						<phase>initialize</phase>
+						<goals>
+							<goal>read-project-properties</goal>
+						</goals>
+						<configuration>
+							<files>
+								<file>${project.build.directory}/version.properties</file>
+							</files>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
